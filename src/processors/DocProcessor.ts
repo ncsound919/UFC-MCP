@@ -233,7 +233,9 @@ export class DocProcessor {
   }
 
   private yamlToJson(raw: string, pretty: boolean): string {
-    // Basic YAML parser for common cases (no external dep)
+    // Basic YAML parser for simple key-value pairs, nested objects, and scalar arrays.
+    // Note: advanced YAML features (multiline strings with > or |, anchors/aliases,
+    // custom tags, nested arrays) are not supported. For complex YAML use a dedicated library.
     const lines = raw.split("\n").filter((l) => l.trim() && !l.trim().startsWith("#"));
     const result: any = {};
     const stack: { obj: any; indent: number }[] = [{ obj: result, indent: -1 }];
@@ -280,14 +282,46 @@ export class DocProcessor {
     return [headers.join(","), ...rows].join("\n");
   }
 
+  private parseCsvLine(line: string): string[] {
+    const fields: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') {
+            current += '"';
+            i++; // skip escaped double-quote
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ",") {
+          fields.push(current);
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+    }
+    fields.push(current);
+    return fields;
+  }
+
   private csvToJson(raw: string, pretty: boolean): string {
     const lines = raw.trim().split("\n");
     if (!lines.length) return "[]";
-    const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+    const headers = this.parseCsvLine(lines[0]).map((h) => h.trim());
     const rows = lines.slice(1).map((line) => {
-      const vals = line.split(",");
+      const vals = this.parseCsvLine(line);
       return headers.reduce((acc: any, h, i) => {
-        const val = (vals[i] || "").trim().replace(/^"|"$/g, "");
+        const val = (vals[i] ?? "").trim();
         acc[h] = isNaN(Number(val)) || val === "" ? val : Number(val);
         return acc;
       }, {});
@@ -299,11 +333,9 @@ export class DocProcessor {
     const lines = raw.trim().split("\n");
     if (!lines.length) return "";
     const [header, ...rows] = lines;
-    const cols = header.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+    const cols = this.parseCsvLine(header).map((c) => c.trim());
     const separator = cols.map(() => "---").join(" | ");
-    const mdRows = rows.map((r) =>
-      r.split(",").map((c) => c.trim().replace(/^"|"$/g, "")).join(" | ")
-    );
+    const mdRows = rows.map((r) => this.parseCsvLine(r).map((c) => c.trim()).join(" | "));
     return [cols.join(" | "), separator, ...mdRows].join("\n");
   }
 

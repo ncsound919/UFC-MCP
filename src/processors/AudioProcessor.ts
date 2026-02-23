@@ -1,9 +1,9 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { stat } from "fs/promises";
 import { ConversionState, ConversionRecord } from "../state/ConversionState.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export interface AudioConvertOptions {
   inputPath: string;
@@ -24,16 +24,14 @@ export class AudioProcessor {
 
     try {
       // Verify ffmpeg is available
-      await execAsync("ffmpeg -version").catch(() => {
+      await execFileAsync("ffmpeg", ["-version"]).catch(() => {
         throw new Error(
           "ffmpeg not found. Install it: macOS: `brew install ffmpeg` | Ubuntu: `sudo apt install ffmpeg` | Windows: https://ffmpeg.org/download.html"
         );
       });
 
-      const args = this.buildArgs(inputPath, outputPath, { bitrate, sampleRate, channels });
-      const cmd = `ffmpeg -y -i "${inputPath}" ${args} "${outputPath}"`;
-      
-      await execAsync(cmd);
+      const codecArgs = this.buildArgs(inputPath, outputPath, { bitrate, sampleRate, channels });
+      await execFileAsync("ffmpeg", ["-y", "-i", inputPath, ...codecArgs, outputPath]);
 
       const [inStat, outStat] = await Promise.all([
         stat(inputPath).catch(() => null),
@@ -56,29 +54,31 @@ export class AudioProcessor {
     _input: string,
     output: string,
     opts: Omit<AudioConvertOptions, "inputPath" | "outputPath">
-  ): string {
+  ): string[] {
     const args: string[] = [];
     const ext = output.split(".").pop()?.toLowerCase();
 
-    if (opts.bitrate) args.push(`-b:a ${opts.bitrate}`);
-    if (opts.sampleRate) args.push(`-ar ${opts.sampleRate}`);
-    if (opts.channels) args.push(`-ac ${opts.channels}`);
+    if (opts.bitrate) args.push("-b:a", opts.bitrate);
+    if (opts.sampleRate) args.push("-ar", String(opts.sampleRate));
+    if (opts.channels) args.push("-ac", String(opts.channels));
 
     // Format-specific codec choices
-    if (ext === "mp3") args.push("-codec:a libmp3lame");
-    else if (ext === "ogg") args.push("-codec:a libvorbis");
-    else if (ext === "aac" || ext === "m4a") args.push("-codec:a aac");
-    else if (ext === "flac") args.push("-codec:a flac");
-    else if (ext === "opus") args.push("-codec:a libopus");
-    else if (ext === "wav") args.push("-codec:a pcm_s16le");
-    else if (ext === "aiff") args.push("-codec:a pcm_s16be");
+    if (ext === "mp3") args.push("-codec:a", "libmp3lame");
+    else if (ext === "ogg") args.push("-codec:a", "libvorbis");
+    else if (ext === "aac" || ext === "m4a") args.push("-codec:a", "aac");
+    else if (ext === "flac") args.push("-codec:a", "flac");
+    else if (ext === "opus") args.push("-codec:a", "libopus");
+    else if (ext === "wav") args.push("-codec:a", "pcm_s16le");
+    else if (ext === "aiff") args.push("-codec:a", "pcm_s16be");
 
-    return args.join(" ");
+    return args;
   }
 
   private buildResult(record: ConversionRecord, inSize?: number, outSize?: number) {
     const compression =
-      inSize && outSize ? `${((1 - outSize / inSize) * 100).toFixed(1)}%` : null;
+      inSize != null && inSize > 0 && outSize != null
+        ? `${((1 - outSize / inSize) * 100).toFixed(1)}%`
+        : null;
     return {
       success: true,
       id: record.id,

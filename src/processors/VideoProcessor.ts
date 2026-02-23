@@ -1,9 +1,9 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { stat } from "fs/promises";
 import { ConversionState, ConversionRecord } from "../state/ConversionState.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export interface VideoConvertOptions {
   inputPath: string;
@@ -31,16 +31,18 @@ export class VideoProcessor {
     });
 
     try {
-      await execAsync("ffmpeg -version").catch(() => {
+      await execFileAsync("ffmpeg", ["-version"]).catch(() => {
         throw new Error(
           "ffmpeg not found. Install it: macOS: `brew install ffmpeg` | Ubuntu: `sudo apt install ffmpeg`"
         );
       });
 
-      const args = this.buildArgs(outputPath, { resolution, fps, videoBitrate, audioBitrate, noAudio, startTime, duration });
-      const cmd = `ffmpeg -y ${startTime ? `-ss ${startTime}` : ""} -i "${inputPath}" ${args} "${outputPath}"`;
+      const codecArgs = this.buildArgs(outputPath, { resolution, fps, videoBitrate, audioBitrate, noAudio, startTime, duration });
+      const ffmpegArgs = ["-y"];
+      if (startTime) ffmpegArgs.push("-ss", startTime);
+      ffmpegArgs.push("-i", inputPath, ...codecArgs, outputPath);
 
-      await execAsync(cmd, { maxBuffer: 1024 * 1024 * 50 }); // 50MB buffer for large videos
+      await execFileAsync("ffmpeg", ffmpegArgs, { maxBuffer: 1024 * 1024 * 50 }); // 50MB buffer for large videos
 
       const [inStat, outStat] = await Promise.all([
         stat(inputPath).catch(() => null),
@@ -62,38 +64,40 @@ export class VideoProcessor {
   private buildArgs(
     output: string,
     opts: Omit<VideoConvertOptions, "inputPath" | "outputPath">
-  ): string {
+  ): string[] {
     const args: string[] = [];
     const ext = output.split(".").pop()?.toLowerCase();
 
-    if (opts.duration) args.push(`-t ${opts.duration}`);
-    if (opts.resolution) args.push(`-s ${opts.resolution}`);
-    if (opts.fps) args.push(`-r ${opts.fps}`);
-    if (opts.videoBitrate) args.push(`-b:v ${opts.videoBitrate}`);
+    if (opts.duration) args.push("-t", opts.duration);
+    if (opts.resolution) args.push("-s", opts.resolution);
+    if (opts.fps) args.push("-r", String(opts.fps));
+    if (opts.videoBitrate) args.push("-b:v", opts.videoBitrate);
     if (opts.noAudio) args.push("-an");
-    else if (opts.audioBitrate) args.push(`-b:a ${opts.audioBitrate}`);
+    else if (opts.audioBitrate) args.push("-b:a", opts.audioBitrate);
 
     // Format-specific settings
     if (ext === "mp4") {
-      args.push("-codec:v libx264 -preset fast -crf 22");
-      if (!opts.noAudio) args.push("-codec:a aac");
+      args.push("-codec:v", "libx264", "-preset", "fast", "-crf", "22");
+      if (!opts.noAudio) args.push("-codec:a", "aac");
     } else if (ext === "webm") {
-      args.push("-codec:v libvpx-vp9 -crf 30 -b:v 0");
-      if (!opts.noAudio) args.push("-codec:a libopus");
+      args.push("-codec:v", "libvpx-vp9", "-crf", "30", "-b:v", "0");
+      if (!opts.noAudio) args.push("-codec:a", "libopus");
     } else if (ext === "gif") {
-      args.push("-vf 'fps=15,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse'");
+      args.push("-vf", "fps=15,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse");
     } else if (ext === "mov") {
-      args.push("-codec:v libx264 -codec:a aac");
+      args.push("-codec:v", "libx264", "-codec:a", "aac");
     } else if (ext === "avi") {
-      args.push("-codec:v libxvid -codec:a libmp3lame");
+      args.push("-codec:v", "libxvid", "-codec:a", "libmp3lame");
     }
 
-    return args.join(" ");
+    return args;
   }
 
   private buildResult(record: ConversionRecord, inSize?: number, outSize?: number) {
     const sizeReduction =
-      inSize && outSize ? `${((1 - outSize / inSize) * 100).toFixed(1)}%` : null;
+      inSize != null && inSize > 0 && outSize != null
+        ? `${((1 - outSize / inSize) * 100).toFixed(1)}%`
+        : null;
     return {
       success: true,
       id: record.id,

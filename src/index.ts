@@ -13,6 +13,7 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { basename } from "path";
 import { AudioProcessor } from "./processors/AudioProcessor.js";
 import { VideoProcessor } from "./processors/VideoProcessor.js";
 import { ImageProcessor } from "./processors/ImageProcessor.js";
@@ -207,17 +208,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "batch_convert": {
         const { inputPaths, outputDir, outputFormat, options = {} } = args as any;
+        const audioExts = ["mp3", "wav", "flac", "aac", "ogg", "m4a", "aiff", "opus"];
+        const videoExts = ["mp4", "webm", "avi", "mov", "mkv", "gif"];
+        const imageExts = ["jpg", "jpeg", "png", "webp", "avif", "tiff", "ico", "bmp"];
+        const documentExts = ["md", "markdown", "json", "yaml", "yml", "html", "csv", "txt"];
+        const ext = (outputFormat as string).toLowerCase();
+
+        if (![...audioExts, ...videoExts, ...imageExts, ...documentExts].includes(ext)) {
+          throw new Error(
+            `Unsupported output format "${outputFormat}". Supported: ${[...audioExts, ...videoExts, ...imageExts, ...documentExts].join(", ")}`
+          );
+        }
+
         const results = await Promise.allSettled(
           inputPaths.map(async (inputPath: string) => {
-            const basename = inputPath.split("/").pop()!.replace(/\.[^.]+$/, "");
-            const outputPath = `${outputDir}/${basename}.${outputFormat}`;
-            const ext = outputFormat.toLowerCase();
-            
-            if (["mp3", "wav", "flac", "aac", "ogg", "m4a", "aiff"].includes(ext)) {
+            const fileBaseName = basename(inputPath).replace(/\.[^.]+$/, "");
+            const outputPath = `${outputDir}/${fileBaseName}.${ext}`;
+
+            if (audioExts.includes(ext)) {
               return audio.convert({ inputPath, outputPath, ...options });
-            } else if (["mp4", "webm", "avi", "mov", "mkv", "gif"].includes(ext)) {
+            } else if (videoExts.includes(ext)) {
               return video.convert({ inputPath, outputPath, ...options });
-            } else if (["jpg", "jpeg", "png", "webp", "avif", "tiff", "ico", "bmp"].includes(ext)) {
+            } else if (imageExts.includes(ext)) {
               return image.convert({ inputPath, outputPath, ...options });
             } else {
               return doc.convert({ inputPath, outputPath, ...options });
@@ -258,7 +270,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { category = "all" } = args as any;
         const formats: Record<string, any> = {
           audio: {
-            input: ["mp3", "wav", "flac", "aac", "ogg", "m4a", "aiff", "wma", "opus"],
+            input: ["mp3", "wav", "flac", "aac", "ogg", "m4a", "aiff", "opus"],
             output: ["mp3", "wav", "flac", "aac", "ogg", "m4a", "aiff", "opus"],
             notes: "Powered by FFmpeg. Supports bitrate, sample rate, channel control.",
           },
