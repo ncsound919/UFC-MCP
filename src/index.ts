@@ -224,11 +224,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
           })
         );
-        const summary = results.map((r, i) => ({
-          file: inputPaths[i],
-          status: r.status,
-          result: r.status === "fulfilled" ? r.value : (r as any).reason?.message,
-        }));
+        const summary = results.map((r, i) => {
+          const file = inputPaths[i];
+          if (r.status === "fulfilled") {
+            return {
+              file,
+              status: r.status,
+              result: r.value,
+            };
+          }
+          const reason: unknown = (r as PromiseRejectedResult).reason;
+          const message =
+            reason instanceof Error ? reason.message : String(reason);
+          const stack =
+            reason instanceof Error && reason.stack ? reason.stack : undefined;
+          return {
+            file,
+            status: r.status,
+            error: {
+              message,
+              stack,
+            },
+          };
+        });
         return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
       }
       case "get_conversion_history": {
