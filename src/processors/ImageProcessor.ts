@@ -89,7 +89,7 @@ export class ImageProcessor {
         durationMs: record.durationMs,
         inputSize: inStat ? `${(inStat.size / 1024).toFixed(1)} KB` : null,
         outputSize: outStat ? `${(outStat.size / 1024).toFixed(1)} KB` : null,
-        sizeReduction: inStat && outStat
+        sizeReduction: inStat && outStat && inStat.size > 0
           ? `${((1 - outStat.size / inStat.size) * 100).toFixed(1)}%`
           : null,
         message: `Image converted successfully in ${record.durationMs}ms`,
