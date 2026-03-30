@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * File Converter MCP Server
- * Handles audio, video, image, and document file conversions
+ * Handles audio, video, image, document, music, biotech, fintech, logistics, and dev format conversions
  * Compatible with Claude Desktop / any MCP-compatible host
  */
 
@@ -18,6 +18,11 @@ import { AudioProcessor } from "./processors/AudioProcessor.js";
 import { VideoProcessor } from "./processors/VideoProcessor.js";
 import { ImageProcessor } from "./processors/ImageProcessor.js";
 import { DocProcessor } from "./processors/DocProcessor.js";
+import { MusicProcessor } from "./processors/MusicProcessor.js";
+import { BiotechProcessor } from "./processors/BiotechProcessor.js";
+import { FintechProcessor } from "./processors/FintechProcessor.js";
+import { LogisticsProcessor } from "./processors/LogisticsProcessor.js";
+import { DevFormatProcessor } from "./processors/DevFormatProcessor.js";
 import { ConversionState } from "./state/ConversionState.js";
 
 const state = new ConversionState();
@@ -25,9 +30,14 @@ const audio = new AudioProcessor(state);
 const video = new VideoProcessor(state);
 const image = new ImageProcessor(state);
 const doc = new DocProcessor(state);
+const music = new MusicProcessor(state);
+const biotech = new BiotechProcessor(state);
+const fintech = new FintechProcessor(state);
+const logistics = new LogisticsProcessor(state);
+const devfmt = new DevFormatProcessor(state);
 
 const server = new Server(
-  { name: "file-converter-mcp", version: "1.0.0" },
+  { name: "file-converter-mcp", version: "2.0.0" },
   {
     capabilities: {
       tools: {},
@@ -128,6 +138,121 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "convert_music",
+      description:
+        "Convert music notation and MIDI files: MIDI (.mid/.midi)→JSON, ABC notation (.abc)→JSON, MusicXML (.musicxml/.mxl)→JSON",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input music file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: {
+            type: "string",
+            enum: ["midi", "mid", "abc", "musicxml", "mxl", "json"],
+            description: "Input format (auto-detected from extension if not provided)",
+          },
+          outputFormat: {
+            type: "string",
+            enum: ["json"],
+            description: "Output format (currently json)",
+          },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
+      name: "convert_biotech",
+      description:
+        "Convert bioinformatics and genomics files: FASTA↔JSON/CSV, FASTQ→JSON/FASTA, VCF→JSON/CSV, GFF/GTF→JSON/CSV, PDB→JSON",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input biotech file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: {
+            type: "string",
+            enum: ["fasta", "fastq", "vcf", "gff", "gff3", "gtf", "pdb", "json"],
+            description: "Input format (auto-detected from extension if not provided)",
+          },
+          outputFormat: {
+            type: "string",
+            enum: ["json", "csv", "fasta"],
+            description: "Output format",
+          },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
+      name: "convert_fintech",
+      description:
+        "Convert financial data formats: OFX/QFX (banking)→JSON/CSV, QIF (Quicken)→JSON/CSV, MT940 (SWIFT)→JSON/CSV",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input financial data file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: {
+            type: "string",
+            enum: ["ofx", "qfx", "qif", "mt940", "json"],
+            description: "Input format (auto-detected from extension if not provided)",
+          },
+          outputFormat: {
+            type: "string",
+            enum: ["json", "csv"],
+            description: "Output format",
+          },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
+      name: "convert_logistics",
+      description:
+        "Convert supply chain and logistics formats: EDI X12→JSON/CSV, EDIFACT→JSON, GPX↔GeoJSON, JSON→GeoJSON",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input logistics file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: {
+            type: "string",
+            enum: ["edi", "edifact", "gpx", "geojson", "json"],
+            description: "Input format (auto-detected from extension if not provided)",
+          },
+          outputFormat: {
+            type: "string",
+            enum: ["json", "csv", "geojson", "gpx"],
+            description: "Output format",
+          },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
+      name: "convert_dev_format",
+      description:
+        "Convert developer config and schema formats: TOML↔JSON, INI↔JSON, ENV↔JSON, XML→JSON, JSONL↔JSON, Protobuf schema→JSON, GraphQL schema→JSON",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input config/schema file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: {
+            type: "string",
+            enum: ["toml", "ini", "env", "xml", "jsonl", "json", "proto", "graphql", "gql"],
+            description: "Input format (auto-detected from extension if not provided)",
+          },
+          outputFormat: {
+            type: "string",
+            enum: ["json", "toml", "ini", "env", "jsonl"],
+            description: "Output format",
+          },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
       name: "batch_convert",
       description:
         "Convert multiple files at once with the same settings",
@@ -140,7 +265,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: "Array of absolute input file paths",
           },
           outputDir: { type: "string", description: "Directory for all output files" },
-          outputFormat: { type: "string", description: "Target format extension e.g. 'wav', 'webp', 'json'" },
+          outputFormat: { type: "string", description: "Target format extension e.g. 'wav', 'webp', 'json', 'csv'" },
           options: {
             type: "object",
             description: "Format-specific options (same as individual converters)",
@@ -173,7 +298,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           category: {
             type: "string",
-            enum: ["audio", "video", "image", "document", "all"],
+            enum: ["audio", "video", "image", "document", "music", "biotech", "fintech", "logistics", "devformat", "all"],
             description: "Category to list formats for (default 'all')",
           },
         },
@@ -206,31 +331,66 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const result = await doc.convert(args as any);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       }
+      case "convert_music": {
+        const result = await music.convert(args as any);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
+      case "convert_biotech": {
+        const result = await biotech.convert(args as any);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
+      case "convert_fintech": {
+        const result = await fintech.convert(args as any);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
+      case "convert_logistics": {
+        const result = await logistics.convert(args as any);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
+      case "convert_dev_format": {
+        const result = await devfmt.convert(args as any);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
       case "batch_convert": {
         const { inputPaths, outputDir, outputFormat, options = {} } = args as any;
         const audioExts = ["mp3", "wav", "flac", "aac", "ogg", "m4a", "aiff", "opus"];
         const videoExts = ["mp4", "webm", "avi", "mov", "mkv", "gif"];
         const imageExts = ["jpg", "jpeg", "png", "webp", "avif", "tiff", "ico", "bmp"];
         const documentExts = ["md", "markdown", "json", "yaml", "yml", "html", "csv", "txt"];
+        const musicExts = ["mid", "midi", "abc", "musicxml", "mxl"];
+        const biotechExts = ["fasta", "fa", "fna", "faa", "fastq", "fq", "vcf", "gff", "gff3", "gtf", "pdb"];
+        const fintechExts = ["ofx", "qfx", "qif", "mt940"];
+        const logisticsExts = ["edi", "x12", "edifact", "gpx", "geojson"];
+        const devExts = ["toml", "ini", "env", "xml", "jsonl", "proto", "graphql", "gql"];
         const ext = (outputFormat as string).toLowerCase();
+        const allExts = [...audioExts, ...videoExts, ...imageExts, ...documentExts, ...musicExts, ...biotechExts, ...fintechExts, ...logisticsExts, ...devExts];
 
-        if (![...audioExts, ...videoExts, ...imageExts, ...documentExts].includes(ext)) {
-          throw new Error(
-            `Unsupported output format "${outputFormat}". Supported: ${[...audioExts, ...videoExts, ...imageExts, ...documentExts].join(", ")}`
-          );
+        if (!allExts.includes(ext) && ext !== 'json' && ext !== 'csv') {
+          throw new Error(`Unsupported output format "${outputFormat}".`);
         }
 
         const results = await Promise.allSettled(
           inputPaths.map(async (inputPath: string) => {
             const fileBaseName = basename(inputPath).replace(/\.[^.]+$/, "");
             const outputPath = `${outputDir}/${fileBaseName}.${ext}`;
+            const inExt = inputPath.split('.').pop()?.toLowerCase() ?? '';
 
-            if (audioExts.includes(ext)) {
+            if (audioExts.includes(inExt) || audioExts.includes(ext)) {
               return audio.convert({ inputPath, outputPath, ...options });
-            } else if (videoExts.includes(ext)) {
+            } else if (videoExts.includes(inExt) || videoExts.includes(ext)) {
               return video.convert({ inputPath, outputPath, ...options });
-            } else if (imageExts.includes(ext)) {
+            } else if (imageExts.includes(inExt) || imageExts.includes(ext)) {
               return image.convert({ inputPath, outputPath, ...options });
+            } else if (musicExts.includes(inExt)) {
+              return music.convert({ inputPath, outputPath, ...options });
+            } else if (biotechExts.includes(inExt)) {
+              return biotech.convert({ inputPath, outputPath, ...options });
+            } else if (fintechExts.includes(inExt)) {
+              return fintech.convert({ inputPath, outputPath, ...options });
+            } else if (logisticsExts.includes(inExt)) {
+              return logistics.convert({ inputPath, outputPath, ...options });
+            } else if (devExts.includes(inExt)) {
+              return devfmt.convert({ inputPath, outputPath, ...options });
             } else {
               return doc.convert({ inputPath, outputPath, ...options });
             }
@@ -238,26 +398,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
         const summary = results.map((r, i) => {
           const file = inputPaths[i];
-          if (r.status === "fulfilled") {
-            return {
-              file,
-              status: r.status,
-              result: r.value,
-            };
-          }
+          if (r.status === "fulfilled") return { file, status: r.status, result: r.value };
           const reason: unknown = (r as PromiseRejectedResult).reason;
-          const message =
-            reason instanceof Error ? reason.message : String(reason);
-          const stack =
-            reason instanceof Error && reason.stack ? reason.stack : undefined;
-          return {
-            file,
-            status: r.status,
-            error: {
-              message,
-              stack,
-            },
-          };
+          const message = reason instanceof Error ? reason.message : String(reason);
+          const stack = reason instanceof Error && reason.stack ? reason.stack : undefined;
+          return { file, status: r.status, error: { message, stack } };
         });
         return { content: [{ type: "text", text: JSON.stringify(summary, null, 2) }] };
       }
@@ -288,6 +433,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             input: ["md", "markdown", "json", "yaml", "yml", "html", "csv", "txt"],
             output: ["md", "markdown", "json", "yaml", "yml", "html", "csv", "txt"],
             notes: "Pure Node.js. Supports bidirectional conversion with formatting options.",
+          },
+          music: {
+            input: ["mid", "midi", "abc", "musicxml", "mxl"],
+            output: ["json"],
+            notes: "Pure Node.js. Binary MIDI parsing, ABC notation, MusicXML structured extraction.",
+          },
+          biotech: {
+            input: ["fasta", "fa", "fna", "faa", "fastq", "fq", "vcf", "gff", "gff3", "gtf", "pdb"],
+            output: ["json", "csv", "fasta"],
+            notes: "Pure Node.js. Includes GC content, variant parsing, structural PDB chain extraction.",
+          },
+          fintech: {
+            input: ["ofx", "qfx", "qif", "mt940"],
+            output: ["json", "csv"],
+            notes: "Pure Node.js. OFX/SGML/XML, QIF Quicken, MT940 SWIFT statements.",
+          },
+          logistics: {
+            input: ["edi", "x12", "edifact", "gpx", "geojson", "json"],
+            output: ["json", "csv", "geojson", "gpx"],
+            notes: "Pure Node.js. EDI X12, EDIFACT, GPX tracks/waypoints, GeoJSON FeatureCollections.",
+          },
+          devformat: {
+            input: ["toml", "ini", "env", "xml", "jsonl", "json", "proto", "graphql", "gql"],
+            output: ["json", "toml", "ini", "env", "jsonl"],
+            notes: "Pure Node.js. Config formats, Protobuf schema extraction, GraphQL schema parsing.",
           },
         };
         const result = category === "all" ? formats : { [category]: formats[category] };
