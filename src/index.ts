@@ -462,7 +462,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           statistics: ["rdata", "rds", "sav", "dta", "mat", "sas7bdat"],
           chemistry: ["mol", "sdf", "mol2", "pdb", "cml", "smi", "smiles", "inchi", "xyz"],
           astronomy: ["fits", "fit", "fts"],
-          geoscience: ["nc", "hdf5", "h5", "he5", "kml", "geojson", "shp"],
+          geoscience: ["nc", "hdf5", "h5", "he5", "kml", "geojson", "shp", "tif", "tiff", "geotiff"],
         };
         const ext = (outputFormat as string).toLowerCase();
         const results = await Promise.allSettled(
