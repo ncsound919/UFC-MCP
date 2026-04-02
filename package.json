@@ -1,7 +1,7 @@
 {
   "name": "file-converter-mcp",
-  "version": "1.0.0",
-  "description": "Universal File Converter MCP — audio, video, image, and document conversions for Claude Desktop",
+  "version": "2.1.0",
+  "description": "Universal File Converter MCP — audio, video, image, document, spreadsheet, archive, font, 3D, email, music, biotech, fintech, logistics, and dev format conversions for Claude Desktop",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -14,6 +14,9 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "sharp": "^0.33.0"
   },
+  "optionalDependencies": {
+    "xlsx": "^0.18.5"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
@@ -22,5 +25,5 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["mcp", "file-converter", "audio", "video", "image", "document", "ffmpeg", "claude"]
+  "keywords": ["mcp", "file-converter", "audio", "video", "image", "document", "spreadsheet", "archive", "font", "3d", "email", "ffmpeg", "claude", "biotech", "fintech", "logistics"]
 }
