@@ -105,15 +105,49 @@ export class ChemistryProcessor {
       }
     }
 
-    // Parse properties
+    // Parse properties (SDF data fields typically appear after 'M  END')
     molecule.properties = {};
-    for (let i = 4 + (molecule.atomCount || 0) + (molecule.bondCount || 0); i < lines.length; i++) {
+    const baseIndex = 4 + (molecule.atomCount || 0) + (molecule.bondCount || 0);
+    let startIndex = baseIndex;
+
+    // Find 'M  END' starting from the end of the bond block, then begin parsing
+    // properties from the line immediately after it. If not found, fall back to
+    // starting at the end of the bond block.
+    for (let i = baseIndex; i < lines.length; i++) {
+      if (lines[i].trim().startsWith('M  END')) {
+        startIndex = i + 1;
+        break;
+      }
+    }
+
+    for (let i = startIndex; i < lines.length; i++) {
       const line = lines[i].trim();
-      if (line.startsWith('M  END')) break;
+      if (!line) {
+        continue;
+      }
+
       if (line.startsWith('>')) {
-        const propName = line.slice(1).trim().replace(/[<>]/g, '');
-        const propValue = lines[i + 1]?.trim() ?? '';
-        molecule.properties[propName] = propValue;
+        // Expected format: >  <FIELDNAME>
+        const match = line.match(/^>\s*<([^>]+)>/);
+        if (!match) {
+          continue;
+        }
+        const propName = match[1].trim();
+
+        // Collect all subsequent non-empty lines as the property value until a
+        // blank line or end-of-block. Join multiple lines with '\n'.
+        const valueLines: string[] = [];
+        let j = i + 1;
+        for (; j < lines.length; j++) {
+          const valueLine = lines[j];
+          if (valueLine.trim() === '') {
+            break;
+          }
+          valueLines.push(valueLine);
+        }
+
+        molecule.properties[propName] = valueLines.join('\n').trim();
+        i = j;
       }
     }
 
