@@ -59,21 +59,12 @@ export class GeoscienceProcessor {
       case 'kml->json': return this.kmlToJson(input.toString('utf8'));
       case 'geojson->json': return input.toString('utf8'); // Already JSON
       default:
-        return JSON.stringify({
-          error: `Geoscience format conversion ${inFmt} -> ${outFmt} requires specialized libraries`,
-          recommendations: {
-            'nc/hdf5': 'Install netCDF4, xarray, h5py: pip install netcdf4 xarray h5py',
-            'geotiff': 'Install GDAL/rasterio: pip install rasterio gdal',
-            'shapefile': 'Install geopandas: pip install geopandas',
-            'kml': 'Install fastkml: pip install fastkml',
-          },
-          fileInfo: {
-            format: inFmt,
-            size: input.length,
-            path: inputPath,
-          },
-          note: 'Use appropriate Python library to read this format and export to JSON/CSV',
-        }, null, 2);
+        throw new Error(
+          `Geoscience format conversion ${inFmt} -> ${outFmt} requires specialized libraries. ` +
+          'Use appropriate tooling (for example: netCDF4/xarray/h5py for nc/hdf5; ' +
+          'GDAL/rasterio for GeoTIFF; geopandas for shapefiles; fastkml for KML) ' +
+          `to read the source file ("${inputPath}", size ${input.length} bytes) and export to JSON/CSV.`
+        );
     }
   }
 
@@ -96,8 +87,9 @@ export class GeoscienceProcessor {
         const coordStr = coordMatch[1].trim();
         const coords = coordStr.split(/\s+/).map(c => {
           const [lon, lat, alt] = c.split(',').map(parseFloat);
-          return alt !== undefined ? [lon, lat, alt] : [lon, lat];
-        });
+          if (!isFinite(lon) || !isFinite(lat)) return null;
+          return isFinite(alt) ? [lon, lat, alt] : [lon, lat];
+        }).filter(Boolean);
 
         const geometry: any = coords.length === 1
           ? { type: 'Point', coordinates: coords[0] }

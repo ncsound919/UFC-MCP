@@ -223,11 +223,19 @@ export class ChemistryProcessor {
     }, null, 2);
   }
 
+  private csvEscape(value: string | number): string {
+    const str = String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
+
   private molToCsv(src: string): string {
     const mol = JSON.parse(this.molToJson(src));
     const rows = ['symbol,x,y,z,charge'];
     for (const atom of mol.atoms || []) {
-      rows.push(`${atom.symbol},${atom.x},${atom.y},${atom.z},${atom.charge}`);
+      rows.push([atom.symbol, atom.x, atom.y, atom.z, atom.charge].map(v => this.csvEscape(v)).join(','));
     }
     return rows.join('\n');
   }
@@ -236,7 +244,7 @@ export class ChemistryProcessor {
     const data = JSON.parse(this.sdfToJson(src));
     const rows = ['molecule_index,name,atom_count,bond_count'];
     (data.molecules || []).forEach((mol: any, idx: number) => {
-      rows.push(`${idx},${mol.name || ''},${mol.atomCount || 0},${mol.bondCount || 0}`);
+      rows.push([idx, mol.name || '', mol.atomCount || 0, mol.bondCount || 0].map(v => this.csvEscape(v)).join(','));
     });
     return rows.join('\n');
   }

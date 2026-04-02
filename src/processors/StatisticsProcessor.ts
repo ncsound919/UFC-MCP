@@ -53,8 +53,9 @@ export class StatisticsProcessor {
     // For now, we'll support basic R script parsing and simple MATLAB matrix notation
     switch (`${inFmt}->${outFmt}`) {
       case 'mat->json': return this.matToJson(input);
-      case 'rdata->json': return this.rToJson(input);
-      case 'rds->json': return this.rToJson(input);
+      case 'rdata->json':
+      case 'rds->json':
+        throw new Error(`R binary format ${inFmt} cannot be parsed as text. Use rpy2 or R directly: pip install rpy2`);
       default: throw new Error(`Statistical format conversion ${inFmt} -> ${outFmt} requires external tools like pyreadstat, scipy, or rpy2. Install: pip install pyreadstat scipy`);
     }
   }

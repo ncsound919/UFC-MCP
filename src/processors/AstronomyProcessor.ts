@@ -3,7 +3,7 @@ import { statSync } from 'fs';
 import { dirname } from 'path';
 import { ConversionState } from '../state/ConversionState.js';
 
-export type AstroFormat = 'fits' | 'fit' | 'json' | 'csv';
+export type AstroFormat = 'fits' | 'json' | 'csv';
 
 export interface AstroConvertOptions {
   inputPath: string;
@@ -28,7 +28,9 @@ export class AstronomyProcessor {
     const { inputPath, outputPath, inputFormat, outputFormat, hdu } = opts;
     const inExt = inputPath.split('.').pop() ?? '';
     const outExt = outputPath.split('.').pop() ?? '';
-    const inFmt = inputFormat ?? this.extToFormat(inExt);
+    const rawInFmt = inputFormat ?? this.extToFormat(inExt);
+    // Normalize fit/fts → fits
+    const inFmt: AstroFormat = (['fits', 'json', 'csv'] as AstroFormat[]).includes(rawInFmt) ? rawInFmt : 'fits';
     const outFmt = outputFormat ?? this.extToFormat(outExt);
     const record = this.state.createRecord('astronomy', inputPath, outputPath, opts);
     try {
@@ -58,13 +60,19 @@ export class AstronomyProcessor {
   private fitsToJson(buffer: Buffer, hdu?: number): string {
     // Basic FITS header parser
     // Full FITS parsing requires astropy or similar
-    const headerBlock = buffer.slice(0, 2880); // FITS headers are 2880-byte blocks
-    const headerStr = headerBlock.toString('ascii');
+    // FITS headers are composed of 2880-byte blocks of 80-character cards and
+    // can span multiple blocks until an END card is encountered.
+    const headerStr = buffer.toString('ascii');
     const cards: any[] = [];
 
-    // Parse header cards (80-char each)
-    for (let i = 0; i < Math.min(headerStr.length, 2880); i += 80) {
+    // Parse header cards (80-char each) across all header blocks until END
+    for (let i = 0; i + 80 <= headerStr.length; i += 80) {
       const card = headerStr.slice(i, i + 80);
+      const trimmed = card.trim();
+      // Stop when we reach the END card, which marks the end of the header
+      if (trimmed === 'END' || trimmed.startsWith('END ')) {
+        break;
+      }
       const match = card.match(/^(\w+)\s*=\s*([^/]+)\s*(?:\/\s*(.*))?$/);
       if (match) {
         const [, keyword, valueStr, comment] = match;
