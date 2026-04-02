@@ -359,14 +359,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "convert_geoscience",
-      description: "Convert geoscience formats: KML→GeoJSON/JSON, GeoJSON→JSON. For NetCDF/HDF5/GeoTIFF/Shapefile, requires specialized Python libraries (netCDF4, h5py, rasterio, geopandas).",
+      description: "Convert geoscience formats: KML→GeoJSON/JSON, GeoJSON→JSON. For advanced formats like NetCDF/HDF5/GeoTIFF/Shapefile, additional tooling is required and not currently handled by this server.",
       inputSchema: {
         type: "object",
         properties: {
           inputPath: { type: "string", description: "Absolute path to input geoscience file" },
           outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
           inputFormat: { type: "string", enum: ["nc", "hdf5", "h5", "he5", "tiff", "geotiff", "shp", "kml", "geojson", "json"], description: "Input format (auto-detected if not provided)" },
-          outputFormat: { type: "string", enum: ["json", "csv", "geojson", "gpx"], description: "Output format" },
+          outputFormat: { type: "string", enum: ["json", "geojson"], description: "Output format" },
           variable: { type: "string", description: "Variable name to extract from NetCDF/HDF5 (optional)" },
         },
         required: ["inputPath", "outputPath"],
