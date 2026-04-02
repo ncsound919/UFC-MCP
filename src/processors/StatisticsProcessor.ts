@@ -64,8 +64,6 @@ export class StatisticsProcessor {
     // Binary .mat files require scipy.io in Python
     const variables: any = {};
     const lines = src.split(/\r?\n/);
-    let currentVar = '';
-    let matrix: number[][] = [];
 
     for (const line of lines) {
       const trimmed = line.trim();
