@@ -336,7 +336,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           inputPath: { type: "string", description: "Absolute path to input chemistry file" },
           outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
-          inputFormat: { type: "string", enum: ["mol", "sdf", "mol2", "pdb", "cml", "smi", "smiles", "inchi", "xyz", "json"], description: "Input format (auto-detected if not provided)" },
+          inputFormat: { type: "string", enum: ["mol", "sdf", "mol2", "pdb", "cml", "smiles", "inchi", "xyz", "json"], description: "Input format (auto-detected if not provided)" },
           outputFormat: { type: "string", enum: ["json", "csv"], description: "Output format" },
         },
         required: ["inputPath", "outputPath"],
