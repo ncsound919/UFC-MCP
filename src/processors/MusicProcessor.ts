@@ -30,8 +30,7 @@ export class MusicProcessor {
     const inFmt = inputFormat ?? this.extToFormat(inExt);
     const outFmt = outputFormat ?? this.extToFormat(outExt);
 
-    const record = this.state.createRecord(inputPath, outputPath, `music:${inFmt}->${outFmt}`);
-    try {
+    const record = this.state.createRecord('music', inputPath, outputPath, opts);    try {
       const isBinary = inFmt === 'midi' || inFmt === 'mid';
       const input = isBinary ? readFileSync(inputPath) : readFileSync(inputPath, 'utf8');
       mkdirSync(dirname(outputPath), { recursive: true });
@@ -39,11 +38,9 @@ export class MusicProcessor {
       writeFileSync(outputPath, output);
       const inStat = statSync(inputPath);
       const outStat = statSync(outputPath);
-      this.state.completeRecord(record.id, { inputSize: inStat.size, outputSize: outStat.size });
-      return { success: true, inputPath, outputPath, inputFormat: inFmt, outputFormat: outFmt, inputSize: inStat.size, outputSize: outStat.size };
+      this.state.completeRecord(record, true, { inputSize: inStat.size, outputSize: outStat.size });      return { success: true, inputPath, outputPath, inputFormat: inFmt, outputFormat: outFmt, inputSize: inStat.size, outputSize: outStat.size };
     } catch (err: any) {
-      this.state.failRecord(record.id, err.message);
-      throw err;
+      this.state.completeRecord(record, false, { error: err.message });      throw err;
     }
   }
 
