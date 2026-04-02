@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * File Converter MCP Server v2.1
+ * File Converter MCP Server v2.2
  * Handles audio, video, image, document, spreadsheet, archive, font, 3D, email,
- * music, biotech, fintech, logistics, and dev format conversions.
+ * music, biotech, fintech, logistics, dev format, statistics, chemistry, astronomy,
+ * and geoscience conversions.
  * Compatible with Claude Desktop / any MCP-compatible host.
  */
 
@@ -29,6 +30,10 @@ import { ArchiveProcessor } from "./processors/ArchiveProcessor.js";
 import { FontProcessor } from "./processors/FontProcessor.js";
 import { ThreeDProcessor } from "./processors/3DProcessor.js";
 import { EmailProcessor } from "./processors/EmailProcessor.js";
+import { StatisticsProcessor } from "./processors/StatisticsProcessor.js";
+import { ChemistryProcessor } from "./processors/ChemistryProcessor.js";
+import { AstronomyProcessor } from "./processors/AstronomyProcessor.js";
+import { GeoscienceProcessor } from "./processors/GeoscienceProcessor.js";
 import { ConversionState } from "./state/ConversionState.js";
 
 const state = new ConversionState();
@@ -46,9 +51,13 @@ const archive = new ArchiveProcessor(state);
 const font = new FontProcessor(state);
 const threed = new ThreeDProcessor(state);
 const email = new EmailProcessor(state);
+const statistics = new StatisticsProcessor(state);
+const chemistry = new ChemistryProcessor(state);
+const astronomy = new AstronomyProcessor(state);
+const geoscience = new GeoscienceProcessor(state);
 
 const server = new Server(
-  { name: "file-converter-mcp", version: "2.1.0" },
+  { name: "file-converter-mcp", version: "2.2.0" },
   {
     capabilities: {
       tools: {},
@@ -306,6 +315,64 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "convert_statistics",
+      description: "Convert statistical data formats: R data (.rdata, .rds)→JSON, MATLAB (.mat)→JSON, SPSS (.sav)→JSON, Stata (.dta)→JSON. Note: Binary formats require Python libraries (pyreadstat, scipy).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input statistical file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: { type: "string", enum: ["rdata", "rds", "sav", "dta", "mat", "sas7bdat", "json"], description: "Input format (auto-detected if not provided)" },
+          outputFormat: { type: "string", enum: ["json", "csv"], description: "Output format" },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
+      name: "convert_chemistry",
+      description: "Convert chemistry/molecular file formats: MOL→JSON/CSV, SDF→JSON/CSV, XYZ→JSON, SMILES→JSON, PDB (molecular)→JSON. For advanced conversions, requires RDKit or Open Babel.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input chemistry file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: { type: "string", enum: ["mol", "sdf", "mol2", "pdb", "cml", "smiles", "inchi", "xyz", "json"], description: "Input format (auto-detected if not provided)" },
+          outputFormat: { type: "string", enum: ["json", "csv"], description: "Output format" },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
+      name: "convert_astronomy",
+      description: "Convert astronomy data formats: FITS→JSON (header extraction). For full FITS data extraction, requires astropy.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input astronomy file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: { type: "string", enum: ["fits", "fit", "json"], description: "Input format (auto-detected if not provided)" },
+          outputFormat: { type: "string", enum: ["json", "csv"], description: "Output format" },
+          hdu: { type: "number", description: "Header Data Unit index (optional, default 0)" },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
+      name: "convert_geoscience",
+      description: "Convert geoscience formats: KML→GeoJSON/JSON, GeoJSON→JSON. For NetCDF/HDF5/GeoTIFF/Shapefile, requires specialized Python libraries (netCDF4, h5py, rasterio, geopandas).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          inputPath: { type: "string", description: "Absolute path to input geoscience file" },
+          outputPath: { type: "string", description: "Absolute path for output file (include extension)" },
+          inputFormat: { type: "string", enum: ["nc", "hdf5", "h5", "he5", "tiff", "geotiff", "shp", "kml", "geojson", "json"], description: "Input format (auto-detected if not provided)" },
+          outputFormat: { type: "string", enum: ["json", "csv", "geojson", "gpx"], description: "Output format" },
+          variable: { type: "string", description: "Variable name to extract from NetCDF/HDF5 (optional)" },
+        },
+        required: ["inputPath", "outputPath"],
+      },
+    },
+    {
       name: "batch_convert",
       description: "Convert multiple files at once with the same settings",
       inputSchema: {
@@ -339,7 +406,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           category: {
             type: "string",
-            enum: ["audio", "video", "image", "document", "spreadsheet", "archive", "font", "3d", "email", "music", "biotech", "fintech", "logistics", "devformat", "all"],
+            enum: ["audio", "video", "image", "document", "spreadsheet", "archive", "font", "3d", "email", "music", "biotech", "fintech", "logistics", "devformat", "statistics", "chemistry", "astronomy", "geoscience", "all"],
             description: "Category to list formats for (default 'all')",
           },
         },
@@ -370,6 +437,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "convert_font": return { content: [{ type: "text", text: JSON.stringify(await font.convert(args as any), null, 2) }] };
       case "convert_3d": return { content: [{ type: "text", text: JSON.stringify(await threed.convert(args as any), null, 2) }] };
       case "convert_email": return { content: [{ type: "text", text: JSON.stringify(await email.convert(args as any), null, 2) }] };
+      case "convert_statistics": return { content: [{ type: "text", text: JSON.stringify(await statistics.convert(args as any), null, 2) }] };
+      case "convert_chemistry": return { content: [{ type: "text", text: JSON.stringify(await chemistry.convert(args as any), null, 2) }] };
+      case "convert_astronomy": return { content: [{ type: "text", text: JSON.stringify(await astronomy.convert(args as any), null, 2) }] };
+      case "convert_geoscience": return { content: [{ type: "text", text: JSON.stringify(await geoscience.convert(args as any), null, 2) }] };
 
       case "batch_convert": {
         const { inputPaths, outputDir, outputFormat, options = {} } = args as any;
@@ -388,6 +459,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           threed: ["obj", "stl", "ply", "glb", "gltf", "off", "3mf"],
           email: ["eml", "mbox"],
           document: ["md", "markdown", "json", "yaml", "yml", "html", "txt"],
+          statistics: ["rdata", "rds", "sav", "dta", "mat", "sas7bdat"],
+          chemistry: ["mol", "sdf", "mol2", "pdb", "cml", "smi", "smiles", "inchi", "xyz"],
+          astronomy: ["fits", "fit", "fts"],
+          geoscience: ["nc", "hdf5", "h5", "he5", "kml", "geojson", "shp"],
         };
         const ext = (outputFormat as string).toLowerCase();
         const results = await Promise.allSettled(
@@ -408,6 +483,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             if (catMap.font.includes(inExt)) return font.convert({ inputPath, outputPath, ...options });
             if (catMap.threed.includes(inExt)) return threed.convert({ inputPath, outputPath, ...options });
             if (catMap.email.includes(inExt)) return email.convert({ inputPath, outputPath, ...options });
+            if (catMap.statistics.includes(inExt)) return statistics.convert({ inputPath, outputPath, ...options });
+            if (catMap.chemistry.includes(inExt)) return chemistry.convert({ inputPath, outputPath, ...options });
+            if (catMap.astronomy.includes(inExt)) return astronomy.convert({ inputPath, outputPath, ...options });
+            if (catMap.geoscience.includes(inExt)) return geoscience.convert({ inputPath, outputPath, ...options });
             return doc.convert({ inputPath, outputPath, ...options });
           })
         );
@@ -443,6 +522,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           fintech: { input: ["ofx", "qfx", "qif", "mt940"], output: ["json", "csv"], notes: "Pure Node.js." },
           logistics: { input: ["edi", "x12", "edifact", "gpx", "geojson", "json"], output: ["json", "csv", "geojson", "gpx"], notes: "Pure Node.js." },
           devformat: { input: ["toml", "ini", "env", "xml", "jsonl", "json", "proto", "graphql", "gql"], output: ["json", "toml", "ini", "env", "jsonl"], notes: "Pure Node.js." },
+          statistics: { input: ["rdata", "rds", "mat", "sav", "dta", "sas7bdat"], output: ["json", "csv"], notes: "Pure Node.js for text formats. Binary formats require: pip install pyreadstat scipy" },
+          chemistry: { input: ["mol", "sdf", "mol2", "pdb", "cml", "smiles", "inchi", "xyz"], output: ["json", "csv"], notes: "Pure Node.js for basic formats. Advanced conversions require: conda install -c conda-forge rdkit" },
+          astronomy: { input: ["fits", "fit", "fts"], output: ["json", "csv"], notes: "Header extraction only. Full data requires: pip install astropy" },
+          geoscience: { input: ["nc", "hdf5", "h5", "he5", "kml", "geojson", "geotiff", "shp"], output: ["json", "csv", "geojson"], notes: "KML/GeoJSON built-in. NetCDF/HDF5/GeoTIFF/Shapefile require: pip install netcdf4 h5py rasterio geopandas" },
         };
         const result = category === "all" ? formats : { [category]: formats[category] };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -475,4 +558,4 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("File Converter MCP v2.1 running on stdio");
+console.error("File Converter MCP v2.2 running on stdio");

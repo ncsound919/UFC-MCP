@@ -28,17 +28,20 @@ export class FintechProcessor {
     const outExt = outputPath.split('.').pop() ?? '';
     const inFmt = inputFormat ?? this.extToFormat(inExt);
     const outFmt = outputFormat ?? this.extToFormat(outExt);
-    const record = this.state.createRecord(inputPath, outputPath, `fin:${inFmt}->${outFmt}`);
+    const record = this.state.createRecord('fintech', inputPath, outputPath, opts);
     try {
       const input = readFileSync(inputPath, 'utf8');
       mkdirSync(dirname(outputPath), { recursive: true });
-    const record = this.state.createRecord('fintech', inputPath, outputPath, opts);      writeFileSync(outputPath, output);
+      const output = this.transform(input, inFmt, outFmt);
+      writeFileSync(outputPath, output);
       const inStat = statSync(inputPath);
       const outStat = statSync(outputPath);
-      this.state.completeRecord(record, true, { inputSize: inStat.size, outputSize: outStat.size });      return { success: true, inputPath, outputPath, inputFormat: inFmt, outputFormat: outFmt, inputSize: inStat.size, outputSize: outStat.size };
+      this.state.completeRecord(record, true, { inputSize: inStat.size, outputSize: outStat.size });
+      return { success: true, inputPath, outputPath, inputFormat: inFmt, outputFormat: outFmt, inputSize: inStat.size, outputSize: outStat.size };
     } catch (err: any) {
-      this.state.failRecord(record.id, err.message);
-      this.state.completeRecord(record, false, { error: err.message });    }
+      this.state.completeRecord(record, false, { error: err.message });
+      throw err;
+    }
   }
 
   private transform(input: string, inFmt: FinFormat, outFmt: FinFormat): string {
