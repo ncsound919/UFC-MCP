@@ -16,16 +16,16 @@ A full-featured [Model Context Protocol](https://modelcontextprotocol.io/) serve
 | 🎨 3D Models | OBJ, STL, PLY, GLTF, GLB | Node.js + assimp |
 | 📧 Email | EML, MBOX → JSON/HTML/TXT | Node.js |
 | 🎼 Music Notation | MIDI, ABC, MusicXML → JSON | Node.js |
-| 🧬 Biotech | FASTA, FASTQ, VCF, GFF, PDB → JSON/CSV | Node.js |
+| 🧬 Biotech | FASTA, FASTQ, VCF, GFF, PDB* → JSON/CSV | Node.js |
 | 💰 Fintech | OFX, QFX, QIF, MT940 → JSON/CSV | Node.js |
 | 📦 Logistics | EDI, EDIFACT, GPX → JSON/GeoJSON | Node.js |
 | ⚙️ Dev Formats | TOML, INI, ENV, XML, Protobuf → JSON | Node.js |
 | 📈 Statistics | R, MATLAB, SPSS, Stata → JSON/CSV | Node.js + Python* |
-| 🧪 Chemistry | MOL, SDF, XYZ, SMILES, PDB → JSON/CSV | Node.js + RDKit* |
+| 🧪 Chemistry | MOL, SDF, XYZ, SMILES → JSON/CSV; PDB* (via external RDKit/Open Babel tools) | Node.js + RDKit* |
 | 🔭 Astronomy | FITS → JSON/CSV (header) | Node.js + astropy* |
 | 🌍 Geoscience | KML, GeoJSON, NetCDF*, HDF5* → JSON | Node.js + Python* |
 
-\* Some advanced features require optional Python libraries
+\* Some advanced features require optional Python libraries. PDB* conversion currently relies on external RDKit/Open Babel tooling and is not handled by the built-in ChemistryProcessor.
 
 ## MCP Tools
 
