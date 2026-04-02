@@ -1,6 +1,6 @@
 export interface ConversionRecord {
   id: string;
-  type: "audio" | "video" | "image" | "document";
+  type: string;
   inputPath: string;
   outputPath: string;
   status: "processing" | "success" | "error";
@@ -20,7 +20,7 @@ export class ConversionState {
   private totalError = 0;
 
   createRecord(
-    type: ConversionRecord["type"],
+    type: string,
     inputPath: string,
     outputPath: string,
     options?: Record<string, any>
