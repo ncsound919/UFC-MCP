@@ -86,9 +86,9 @@ export class EmailProcessor {
   }
 
   private decodeHeader(value: string): string {
-    return value.replace(/=\?([^?]+)\?(B|Q)\?([^?]*)\?=/gi, (_, charset, encoding, text) => {
+    return value.replace(/=\?([^?]+)\?(B|Q)\?([^?]*)\?=/gi, (_: string, charset: string, encoding: string, text: string) => {
       if (encoding.toUpperCase() === "B") return Buffer.from(text, "base64").toString("utf8");
-      return text.replace(/_/g, " ").replace(/=([0-9A-F]{2})/gi, (__, hex) => String.fromCharCode(parseInt(hex, 16)));
+      return text.replace(/_/g, " ").replace(/=([0-9A-F]{2})/gi, (__: string, hex: string) => String.fromCharCode(parseInt(hex, 16)));
     });
   }
 
